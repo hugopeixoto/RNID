@@ -1,0 +1,1 @@
+<input class="form_text" id="idLogin_txtPassword" maxlength="20" name="idLogin_txtPassword" onkeydown="Javascript:ProcessLogin(event);" style="WIDTH: 88px" type="password" value=""></input>

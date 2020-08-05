@@ -1,15 +1,15 @@
 #!/bin/bash
 
-naopassa=$(wget http://azores.gov.pt -o /dev/null -O -|grep -c swf);
+source "scripts/functions.sh"
 
-if [ "$naopassa" -eq "1" ]; then
-	echo "azores: Incumprimento mantém-se, a actualizar o README (faça um git diff, valide, e commit!)";
-	while IFS='' read -r line || [[ -n "$line" ]]; do
-		test "$(echo "$line"|grep -v -c "azores")" -eq "1" \
-			&& echo "$line" \
-			|| (h=$(echo "$line"|cut -d\| -f1-4); t=$(echo "$line"|cut -d\| -f6-); echo "$h| $(date +%Y/%m/%d) |$t");
-	done < README.md > new
-	mv new README.md
-else
-	echo "azores: incumprimento resolvido";
-fi
+azores_http() {
+  curl "http://www.azores.gov.pt/Portal/pt/principal/homepage.htm" |
+    hxnormalize -x |
+    hxselect -s "\n" "form input[type=password]"
+}
+
+incumprimento "Governo dos Açores" "http://www.azores.gov.pt" \
+  "Utilização de Flash" "http://www.azores.gov.pt" has_flash
+
+incumprimento "Governo dos Açores" "http://www.azores.gov.pt" \
+  "Credenciais sem HTTPS" "http://www.azores.gov.pt" diff azores_http

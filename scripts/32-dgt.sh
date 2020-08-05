@@ -1,24 +1,21 @@
 #!/bin/bash
 
-links="$(wget https://tcp.dgterritorio.gov.pt/procurar -o /dev/null -O -|hxnormalize -x -l 10000|hxselect .feed-icon|hxselect a -s '\n')";
+source "scripts/functions.sh"
 
-# How many links are there? if there is less than 1, something has changed,
-# validate manually. If there are more than 1, maybe there's a XLS but also
-# other (open) format. Let's validate manually and adjust the script if the
-# violation stands.
-nlinks="$(echo "$links"|wc -l)";
-xls="$(echo "$links"|grep -c -i xls)";
+dgt_xls() {
+  curl "https://tcp.dgterritorio.gov.pt/procurar" |
+    hxnormalize -x |
+    hxselect -s "\n" ".feed-icon"
+}
 
-# TODO: complementar validações com o incumprimento do XLS
+dgt_shp() {
+  output="$(curl "https://snig.dgterritorio.gov.pt/rndg/srv/por/q?_content_type=json&bucket=s101&facet.q=dataPolicy%2FDados%2520abertos%26orgNameSNIG%2FDire%25C3%25A7%25C3%25A3o-Geral%2520do%2520Territ%25C3%25B3rio%26dataFormat%2FESRI%2520Shapefile&fast=index&from=1&resultType=details&sortBy=referenceDateOrd&sortOrder=&to=20&type=dataset%2Bor%2Bseries" | jq -r '.metadata[0].link[]')"
 
-if [ "$nlinks" -eq "1" ] && [ "$xls" -eq "1" ]; then
-	echo "dgt: Incumprimento mantém-se, a actualizar o README (faça um git diff, valide, e commit!)";
-	while IFS='' read -r line || [[ -n "$line" ]]; do
-		test "$(echo "$line"|grep -v -c "dgterritorio")" -eq "1" \
-			&& echo "$line" \
-			|| (h=$(echo "$line"|cut -d\| -f1-4); t=$(echo "$line"|cut -d\| -f6-); echo "$h| $(date +%Y/%m/%d) |$t");
-	done < README.md > new
-	mv new README.md
-else
-	echo "dgt: algo mudou (nlinks $nlinks, xls $xls), incumprimento potencialmente resolvido (verificar manualmente!)";
-fi
+  curl "$(echo "$output" | tail -n1 | cut '-d|' -f3)" | sha1sum
+}
+
+incumprimento "Direção-Geral do Território" "https://www.dgterritorio.gov.pt/" \
+  "Conteúdo em SHP" "https://snig.dgterritorio.gov.pt/rndg/srv/por/catalog.search#/search?facet.q=dataPolicy%2FDados%2520abertos%26orgNameSNIG%2FDire%25C3%25A7%25C3%25A3o-Geral%2520do%2520Territ%25C3%25B3rio%26dataFormat%2FECW&resultType=details&sortBy=referenceDateOrd&fast=index&_content_type=json&type=dataset%2Bor%2Bseries&from=1&to=20" diff dgt_shp
+
+incumprimento "Direção-Geral do Território" "https://tcp.dgterritorio.gov.pt/" \
+  "XLS" "https://tcp.dgterritorio.gov.pt/procurar" diff dgt_xls
